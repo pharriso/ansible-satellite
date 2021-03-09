@@ -19,3 +19,6 @@
     yum: 
       name: '*'
       state: latest
+
+  - name: reboot
+    reboot:
