@@ -1,0 +1,65 @@
+---
+
+- hosts: all
+  gather_facts: false
+  tasks:
+  - name: clear out old dir
+    file:
+      path: /tmp/sat6_patches
+      state: absent
+    delegate_to: localhost
+    run_once: true
+
+  - name: remove assembled file
+    file:
+      path: /tmp/snow_details.txt
+      state: absent
+    delegate_to: localhost
+    run_once: true
+
+  - name: create temp dir
+    file:
+      state: directory
+      path: /tmp/sat6_patches
+    delegate_to: localhost
+    run_once: true
+
+  - name: get patch details
+    shell: yum updateinfo -q
+    changed_when: false
+    register: updateinfo
+    
+  - name: write out patch details
+    template:
+      src: templates/snow_ticket.j2
+      dest: /tmp/sat6_patches/{{ inventory_hostname }}_patches.txt
+    delegate_to: localhost
+    
+  - name: assemble ticket
+    assemble: 
+      src: /tmp/sat6_patches
+      dest: /tmp/snow_details.txt
+    delegate_to: localhost
+    run_once: true
+
+  - name: log change in servicenow
+    snow_record:
+      username: "{{ snow_user }}"
+      password: "{{ snow_password }}"
+      instance: "{{ snow_instance }}"
+      state: present
+      table: change_request
+      data:
+        short_description: "RHEL patching"
+        assignment_group: "Change Management"
+        description: "{{lookup('file', '/tmp/snow_details.txt')}}"
+        severity: 3
+        priority: 2
+    delegate_to: localhost
+    run_once: true
+    register: snow_state
+
+  - name: schedule patching job in tower
+    shell: "awx --conf.host https://localhost --conf.username admin --conf.password '{{ lookup('env', 'TOWER_PASSWORD') }}' -k schedules  create --name '{{ snow_state.record.number }}' --unified_job_template 41 --rrule 'DTSTART;TZID=Europe/London:{{ lookup('pipe','date +%Y%m%dT%H%M00 -d +62mins') }} RRULE:FREQ=DAILY;INTERVAL=1;COUNT=1' --extra_data '{ 'snapshot_description': 'patching_{{ snow_state.record.number }}', 'concurrent_hosts': '100%', 'snow_number': '{{ snow_state.record.number }}' }' --limit {{ ansible_limit }}"
+    delegate_to: localhost
+    run_once: true

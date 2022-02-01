@@ -1,0 +1,10 @@
+---
+
+- hosts: all
+  tasks:
+  - name: something that changes
+    shell: df -h
+
+  - name: something that doesn't change
+    shell: df -h
+    changed_when: false

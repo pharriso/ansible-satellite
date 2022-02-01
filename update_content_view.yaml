@@ -1,0 +1,53 @@
+---
+
+- hosts: all
+  connection: local
+  vars:
+    sat_url: https://satellite.example.com
+    user: admin
+    password: Redhat123
+    content_view_name: rhel7
+  tasks:
+  - name: Get Host ID
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts?search={{ inventory_hostname }}"
+      validate_certs: false
+      method: GET
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      user: "{{ user }}"
+      password: "{{ password }}"
+      force_basic_auth: yes
+      status_code: 200
+    register: host_id
+
+  - name: Get Content View ID
+    uri:
+      url: "{{ sat_url }}/katello/api/content_views?search={{ content_view_name }}"
+      validate_certs: false
+      method: GET
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      user: "{{ user }}"
+      password: "{{ password }}"
+      force_basic_auth: yes
+      status_code: 200
+    register: content_view_id
+
+  - name: Update Content View
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts/{{ host_id.json.results[0].id }}"
+      validate_certs: false
+      method: PUT
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      body: {"host": {"content_facet_attributes": {"content_view_id": "{{ content_view_id.json.results[0].id }}"}}}
+      body_format: json
+      user: "{{ user }}"
+      password: "{{ password }}"
+      force_basic_auth: yes
+      status_code: 200
+    when: "host_id.json.results[0].content_facet_attributes.content_view_id != content_view_id.json.results[0].id"

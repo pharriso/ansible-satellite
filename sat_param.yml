@@ -1,0 +1,74 @@
+---
+
+- hosts: localhost
+  gather_facts: true
+  vars:
+    sat_url: https://sat6.demolab.local
+    sat_user: admin
+    sat_password: password
+    param_name: capsule
+    param_value: capsule2.demolab.local
+    sat_client: web1.demolab.local
+  tasks:
+  - name: get satellite host id
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts?search={{ sat_client }}"
+      validate_certs: false
+      method: GET
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      user: "{{ sat_user }}"
+      password: "{{ sat_password }}"
+      force_basic_auth: yes
+      status_code: 200
+    register: host_id
+
+  - name: get param
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts/{{ host_id.json.results[0].id }}/parameters?search={{ param_name }}"
+      validate_certs: false
+      method: GET
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      user: "{{ sat_user }}"
+      password: "{{ sat_password }}"
+      force_basic_auth: yes
+      status_code: 200
+    register: parameter
+
+  - debug:
+      var: parameter
+
+  - name: create satellite host parameter
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts/{{ host_id.json.results[0].id }}/parameters"
+      validate_certs: false
+      method: POST
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      body: {"parameter": {"name": "{{ param_name }}", "value": "{{ param_value }}"}}
+      body_format: json
+      user: "{{ sat_user }}"
+      password: "{{ sat_password }}"
+      force_basic_auth: yes
+      status_code: 201
+    when: parameter.json.subtotal == 0
+
+  - name: update satellite host parameters
+    uri:
+      url: "{{ sat_url }}/api/v2/hosts/{{ host_id.json.results[0].id }}/parameters/{{ parameter.json.results[0].id }}"
+      validate_certs: false
+      method: PUT
+      headers:
+        Content-Type: "application/json"
+        Accept: "application/json,version=2"
+      body: {"parameter": {"name": "{{ param_name }}", "value": "{{ param_value }}"}}
+      body_format: json
+      user: "{{ sat_user }}"
+      password: "{{ sat_password }}"
+      force_basic_auth: yes
+      status_code: 200
+    when: parameter.json.subtotal != 0

@@ -1,0 +1,22 @@
+---
+
+- hosts: all
+  tasks:
+  - name: install httpd and postgresql
+    yum:
+      name: 
+        - httpd
+        - postgresql
+      state: installed
+
+  - name: update packages
+    yum:
+      name: 
+        - kernel
+        - redhat-release
+      state: latest
+    register: patched
+
+  - name: reboot servers
+    reboot:
+    when: patched is changed

@@ -1,0 +1,18 @@
+---
+
+- name: install katello certificate
+  yum:
+    name: http://{{ sat_server }}/pub/katello-latest-ca-consumer.latest.noarch.rpm
+    state: installed
+
+- name: register to satellite
+  redhat_subscription:
+    state: present
+    activationkey: "{{ sat_ak }}"
+
+- name: install katello-host-tools
+  yum:
+    name: katello-host-tools
+    state: installed
+
+

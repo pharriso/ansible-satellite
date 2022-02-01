@@ -1,0 +1,14 @@
+# foreman.yml
+plugin: redhat.satellite.foreman
+validate_certs: False
+url: https://infra-sat6.demolab.local
+user: pharriso-sat-tower
+password: Redhat123
+keyed_groups:
+-  key: foreman_operatingsystem_name | lower | regex_replace(' ', '') | regex_replace('[^A-Za-z0-9_]', '_')
+   separator: ''
+   prefix: ''
+-  key: foreman_content_facet_attributes.lifecycle_environment_name | lower
+   prefix: 'lifecycle_env_'
+   separator: ''
+host_filters: 'lifecycle_environment="Dev"'

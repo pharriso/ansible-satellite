@@ -1,0 +1,24 @@
+---
+
+- name: gather facts to find date
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tasks: []
+
+- name: patch hosts in this patch window
+  hosts: "foreman_hostcollection_{{ hostvars['localhost'].ansible_date_time.weekday | lower }}_{{ hostvars['localhost'].ansible_date_time.hour }}"
+  tasks:
+  - name: print current patch window
+    debug:
+      msg: patching hosts in group foreman_hostcollection_{{ hostvars['localhost'].ansible_date_time.weekday | lower }}_{{ hostvars['localhost'].ansible_date_time.hour }}
+    delegate_to: localhost
+    run_once: true
+
+  - name: patch
+    yum: 
+      name: '*'
+      state: latest
+
+  - name: reboot
+    reboot:

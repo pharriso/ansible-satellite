@@ -1,0 +1,16 @@
+---
+
+- hosts: localhost
+  connection: localhost
+  gather_facts: false
+  tasks:
+  - name: create foreman location
+    theforeman.foreman.foreman_location:
+      validate_certs: false
+      username: "{{ sat_user }}"
+      password: "{{ sat_password }}"
+      server_url: https://{{ sat_url }}
+      name: test_location
+      organizations:
+      - pharriso
+      state: present

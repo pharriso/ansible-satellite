@@ -1,0 +1,77 @@
+---
+
+- name: install red hat satellite 6
+  hosts: all
+  gather_facts: true
+  vars:
+    disk_device: /dev/nvme1n1
+    vg_name: vg-data
+    vols:
+    - {"vol_name": "mongodb", "size": "30g", "mount_point": "/var/lib/mongodb" }
+    - {"vol_name": "pulp", "size": "100g", "mount_point": "/var/lib/pulp"}
+    sat6_repositories:
+      - rhel-7-server-rpms
+      - rhel-server-rhscl-7-rpms
+      - rhel-7-server-satellite-6.5-rpms
+      - rhel-7-server-satellite-maintenance-6-rpms
+      - rhel-7-server-ansible-2.6-rpms
+    satellite_org: red hat
+    satellite_location: london
+    satellite_admin_user: admin
+    satellite_admin_password: Redhat123
+  tasks:
+  - name: enable satellite 6 repositories
+    rhsm_repository:
+      name: "{{ sat6_repositories }}"
+      purge: True
+
+  - name: install lvm2
+    yum:
+      name: lvm2
+      state: installed
+
+  - name: create lvm volume group
+    lvg: 
+      vg: "{{ vg_name }}"
+      pvs: "{{ disk_device }}"
+
+  - name: create satellite lvols
+    lvol: 
+      vg: "{{ vg_name }}"
+      lv: "{{ item.vol_name }}"
+      size: "{{ item.size }}"
+    loop: "{{ vols }}"
+
+  - name: create filesystems
+    filesystem: 
+      fstype: xfs 
+      dev: /dev/{{ vg_name }}/{{ item.vol_name }}
+    loop: "{{ vols }}"
+
+  - name: mount filesystems
+    mount: 
+      path: "{{ item.mount_point }}"
+      src: /dev/{{ vg_name }}/{{ item.vol_name }} 
+      state: mounted 
+      fstype: xfs
+    loop: "{{ vols }}"
+
+  - name: update packages
+    yum:
+      name: "*"
+      state: latest
+    register: updates
+
+  - name: reboot if patched
+    reboot:
+    when: updates is changed
+
+  - name: install satellite package
+    yum:
+      name: satellite
+      state: installed
+
+  - name: install satellite
+    shell: satellite-installer --scenario satellite --foreman-initial-organization "{{ satellite_org }}" --foreman-initial-location "{{ satellite_location }}" --foreman-admin-username "{{ satellite_admin_user }}" --foreman-admin-password "{{ satellite_admin_password }}"
+    args:
+      creates: /etc/systemd/system/foreman-tasks.service

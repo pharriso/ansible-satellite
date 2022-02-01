@@ -1,0 +1,19 @@
+---
+
+- hosts: all
+  tasks:
+  - name: update packages
+    yum:
+      name: 
+        - kernel
+        - redhat-release
+        - httpd
+        - postgresql
+      state: latest
+    register: patched
+
+  - name: reboot servers
+    reboot:
+    when: patched is changed
+      
+
