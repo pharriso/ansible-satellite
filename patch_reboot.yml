@@ -1,0 +1,13 @@
+---
+
+- name: patch hosts
+  hosts: all
+  tasks:
+  - name: patch
+    yum: 
+      name: '*'
+      state: latest
+
+  - name: reboot
+    reboot:
+
